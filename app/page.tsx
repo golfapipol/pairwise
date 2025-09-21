@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Download, Shuffle, Circle } from "lucide-react"
+import { Plus, X, Download, Shuffle, Circle, Upload } from "lucide-react"
+import { v4 as uuidv4 } from "uuid"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Child {
@@ -63,6 +64,41 @@ const getColorBadgeClass = (color: "green" | "yellow" | "red") => {
 export default function PairwiseTestingTool() {
   const [steps, setSteps] = useState<Step[]>([])
   const [pairwiseResults, setPairwiseResults] = useState<PairwiseResultWithDescription[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result
+        if (typeof content !== "string") {
+          throw new Error("File content is not a string.")
+        }
+        const data = JSON.parse(content)
+
+        // Basic validation
+        if (data && Array.isArray(data.steps) && Array.isArray(data.pairwiseResults)) {
+          setSteps(data.steps)
+          setPairwiseResults(data.pairwiseResults)
+        } else {
+          alert("Invalid JSON file format.")
+        }
+      } catch (error) {
+        console.error("Error parsing JSON file:", error)
+        alert("Error reading or parsing the JSON file.")
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
 
   const addStep = () => {
     const newStep: Step = {
@@ -257,6 +293,31 @@ export default function PairwiseTestingTool() {
     document.body.removeChild(link)
   }
 
+  const exportToJSON = () => {
+    if (pairwiseResults.length === 0) {
+      alert("Please generate pairwise combinations first.")
+      return
+    }
+
+    const exportData = {
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      steps,
+      pairwiseResults,
+    }
+
+    const jsonContent = JSON.stringify(exportData, null, 2)
+    const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `pairwise-results-${exportData.id}.json`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
@@ -268,11 +329,22 @@ export default function PairwiseTestingTool() {
         </div>
 
         {/* Add Step Button */}
-        <div className="mb-6">
+        <div className="mb-6 flex gap-4">
           <Button onClick={addStep} className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Add Step
           </Button>
+          <Button onClick={handleImportClick} variant="outline" className="flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            Import from JSON
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="application/json"
+          />
         </div>
 
         {/* Steps Container */}
@@ -362,6 +434,12 @@ export default function PairwiseTestingTool() {
               <Button onClick={exportToCSV} variant="outline" className="flex items-center gap-2" size="lg">
                 <Download className="w-4 h-4" />
                 Export as CSV
+              </Button>
+            )}
+            {pairwiseResults.length > 0 && (
+              <Button onClick={exportToJSON} variant="outline" className="flex items-center gap-2" size="lg">
+                <Download className="w-4 h-4" />
+                Export as JSON
               </Button>
             )}
           </div>
