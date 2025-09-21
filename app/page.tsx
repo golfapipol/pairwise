@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useRef } from "react"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Download, Shuffle, Circle, Upload } from "lucide-react"
+import { Plus, X, Download, Shuffle, Circle, Upload, Trash2 } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -62,8 +63,11 @@ const getColorBadgeClass = (color: "green" | "yellow" | "red") => {
 }
 
 export default function PairwiseTestingTool() {
-  const [steps, setSteps] = useState<Step[]>([])
-  const [pairwiseResults, setPairwiseResults] = useState<PairwiseResultWithDescription[]>([])
+  const [steps, setSteps] = useLocalStorage<Step[]>("steps", [])
+  const [pairwiseResults, setPairwiseResults] = useLocalStorage<PairwiseResultWithDescription[]>(
+    "pairwiseResults",
+    [],
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +102,13 @@ export default function PairwiseTestingTool() {
 
   const handleImportClick = () => {
     fileInputRef.current?.click()
+  }
+
+  const handleClearData = () => {
+    if (window.confirm("Are you sure you want to clear all data? This action cannot be undone.")) {
+      setSteps([])
+      setPairwiseResults([])
+    }
   }
 
   const addStep = () => {
@@ -337,6 +348,10 @@ export default function PairwiseTestingTool() {
           <Button onClick={handleImportClick} variant="outline" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />
             Import from JSON
+          </Button>
+          <Button onClick={handleClearData} variant="destructive" className="flex items-center gap-2">
+            <Trash2 className="w-4 h-4" />
+            Clear Data
           </Button>
           <input
             type="file"
