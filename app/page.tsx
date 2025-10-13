@@ -494,7 +494,7 @@ export default function PairwiseTestingTool() {
                             if (key === "Description") {
                               return (
                                 <td key={key} className="p-2 max-w-md">
-                                  <span className="text-sm text-gray-600">{result[key]}</span>
+                                  <span className="text-sm text-gray-600">{result[key].replace("\n", "<br />")}</span>
                                 </td>
                               )
                             }
