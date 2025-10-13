@@ -177,35 +177,57 @@ export default function PairwiseTestingTool() {
       return
     }
 
-    // Process steps: if step has children with values, use them; otherwise use step name itself
-    const stepValues = steps.map((step) => {
-      const validChildren = step.children.filter((child) => child.value.trim() !== "")
+    const redValuesAsResults: PairwiseResultWithDescription[] = []
 
-      if (validChildren.length > 0) {
-        return {
-          name: step.name,
-          values: validChildren.map((child) => ({
-            value: child.value.trim(),
-            color: child.color,
-            description: `${step.name}: ${child.value.trim()}`,
-          })),
-        }
-      } else {
-        // Step without children - use step name as value
-        return {
-          name: step.name,
-          values: [
-            {
-              value: step.name,
-              color: "yellow" as const,
-              description: step.name,
-            },
-          ],
-        }
-      }
-    })
+    // Process steps to separate red values and prepare for combinations
+    const stepValuesForCombinations = steps
+      .map((step) => {
+        const allChildren = step.children.filter((child) => child.value.trim() !== "")
+        const redChildren = allChildren.filter((child) => child.color === "red")
+        const nonRedChildren = allChildren.filter((child) => child.color !== "red")
 
-    // Generate all possible combinations (Cartesian product)
+        // Handle red children: add them to a separate list
+        redChildren.forEach((child) => {
+          const result: PairwiseResultWithDescription = {
+            Description: `${step.name}: ${child.value.trim()}`,
+            _colors: { [step.name]: "red" },
+          }
+          result[step.name] = child.value.trim()
+          redValuesAsResults.push(result)
+        })
+
+        // If there are non-red children, they are used for combinations
+        if (nonRedChildren.length > 0) {
+          return {
+            name: step.name,
+            values: nonRedChildren.map((child) => ({
+              value: child.value.trim(),
+              color: child.color,
+              description: `${step.name}: ${child.value.trim()}`,
+            })),
+          }
+        }
+
+        // If there are no children at all, the step name is used as a value
+        if (allChildren.length === 0) {
+          return {
+            name: step.name,
+            values: [
+              {
+                value: step.name,
+                color: "yellow" as const,
+                description: step.name,
+              },
+            ],
+          }
+        }
+
+        // If a step has ONLY red children, it should not be part of combinations
+        return null
+      })
+      .filter((step): step is Exclude<typeof step, null> => step !== null)
+
+    // Generate all possible combinations (Cartesian product) from non-red values
     const allCombinations: Array<{
       result: PairwiseResult
       descriptions: string[]
@@ -218,7 +240,7 @@ export default function PairwiseTestingTool() {
       descriptions: string[],
       colors: { [key: string]: "green" | "yellow" | "red" },
     ) => {
-      if (index === stepValues.length) {
+      if (index === stepValuesForCombinations.length) {
         allCombinations.push({
           result: { ...current },
           descriptions: [...descriptions],
@@ -227,22 +249,24 @@ export default function PairwiseTestingTool() {
         return
       }
 
-      for (const valueObj of stepValues[index].values) {
-        current[stepValues[index].name] = valueObj.value
+      for (const valueObj of stepValuesForCombinations[index].values) {
+        current[stepValuesForCombinations[index].name] = valueObj.value
         descriptions[index] = valueObj.description
-        colors[stepValues[index].name] = valueObj.color
+        colors[stepValuesForCombinations[index].name] = valueObj.color
         generateCombinations(index + 1, current, descriptions, colors)
       }
     }
 
-    generateCombinations(0, {}, [], {})
+    if (stepValuesForCombinations.length > 0) {
+      generateCombinations(0, {}, [], {})
+    }
 
     // For pairwise testing with improved algorithm
     const pairwiseSet = new Set<string>()
     const selectedCombinations: Array<{
       result: PairwiseResult
       descriptions: string[]
-      colors: { [key: string]: "green" | "yellow" | "red" }
+      colors: { [key:string]: "green" | "yellow" | "red" }
     }> = []
 
     // Add combinations that cover unique pairs
@@ -278,7 +302,8 @@ export default function PairwiseTestingTool() {
       _colors: combination.colors, // Store colors for display
     }))
 
-    setPairwiseResults(finalResults)
+    // Add red values to the final list
+    setPairwiseResults([...finalResults, ...redValuesAsResults])
   }
 
   const exportToCSV = () => {
