@@ -1,5 +1,5 @@
 "use client"
-
+import { Fragment } from "react"
 import { useRef } from "react"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { Button } from "@/components/ui/button"
@@ -494,7 +494,12 @@ export default function PairwiseTestingTool() {
                             if (key === "Description") {
                               return (
                                 <td key={key} className="p-2 max-w-md">
-                                  <span className="text-sm text-gray-600">{result[key].replace("\n", "<br />")}</span>
+                                  <span className="text-sm text-gray-600">{result[key].split("\n").map((line, index, arr) => {
+                                    return (<Fragment>
+                                      {line}
+                                      {arr.length -1 != index && (<br />)}
+                                    </Fragment>)
+                                  })}</span>
                                 </td>
                               )
                             }
