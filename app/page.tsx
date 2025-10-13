@@ -274,7 +274,7 @@ export default function PairwiseTestingTool() {
     // Convert to final format with description
     const finalResults: PairwiseResultWithDescription[] = selectedCombinations.map((combination) => ({
       ...combination.result,
-      Description: combination.descriptions.join(" | "),
+      Description: combination.descriptions.join("\n"),
       _colors: combination.colors, // Store colors for display
     }))
 
